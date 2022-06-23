@@ -1,24 +1,55 @@
 package com.dicoding.todoapp.ui.add
 
+import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
 import com.dicoding.todoapp.R
+import com.dicoding.todoapp.ui.ViewModelFactory
+import com.dicoding.todoapp.ui.list.TaskActivity
 import com.dicoding.todoapp.utils.DatePickerFragment
 import java.text.SimpleDateFormat
 import java.util.*
 
 class AddTaskActivity : AppCompatActivity(), DatePickerFragment.DialogDateListener {
     private var dueDateMillis: Long = System.currentTimeMillis()
+    private lateinit var viewmodel: AddTaskViewModel
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_task)
 
         supportActionBar?.title = getString(R.string.add_task)
+
+        val titleEditText = findViewById<TextView>(R.id.add_ed_title)
+        val descEditText = findViewById<TextView>(R.id.add_ed_description)
+
+        val factory = ViewModelFactory.getInstance(this)
+        viewmodel = ViewModelProvider(this, factory).get(AddTaskViewModel::class.java)
+
+        titleEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
+            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
+                viewmodel.setTitle(s.toString())
+            }
+
+            override fun afterTextChanged(p0: Editable?) {}
+        })
+        descEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
+            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
+                viewmodel.setDescription(s.toString())
+            }
+
+            override fun afterTextChanged(p0: Editable?) {}
+        })
 
     }
 
@@ -31,6 +62,8 @@ class AddTaskActivity : AppCompatActivity(), DatePickerFragment.DialogDateListen
         return when (item.itemId) {
             R.id.action_save -> {
                 //TODO 12 : Create AddTaskViewModel and insert new task to database
+                viewmodel.save()
+                startActivity(Intent(this, TaskActivity::class.java))
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -49,5 +82,6 @@ class AddTaskActivity : AppCompatActivity(), DatePickerFragment.DialogDateListen
         findViewById<TextView>(R.id.add_tv_due_date).text = dateFormat.format(calendar.time)
 
         dueDateMillis = calendar.timeInMillis
+        viewmodel.setDate(dueDateMillis)
     }
 }

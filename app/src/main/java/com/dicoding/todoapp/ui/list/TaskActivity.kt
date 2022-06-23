@@ -1,22 +1,31 @@
 package com.dicoding.todoapp.ui.list
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.paging.PagedList
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dicoding.todoapp.R
 import com.dicoding.todoapp.data.Task
 import com.dicoding.todoapp.setting.SettingsActivity
 import com.dicoding.todoapp.ui.ViewModelFactory
 import com.dicoding.todoapp.ui.add.AddTaskActivity
+import com.dicoding.todoapp.utils.CHANNEL_ID
 import com.dicoding.todoapp.utils.Event
 import com.dicoding.todoapp.utils.TasksFilterType
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -38,8 +47,19 @@ class TaskActivity : AppCompatActivity() {
         }
 
         //TODO 6 : Initiate RecyclerView with LayoutManager
+        recycler = findViewById(R.id.rv_task)
+
+        val layoutManager =
+            if (applicationContext.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                GridLayoutManager(this, 2)
+            } else {
+                LinearLayoutManager(this)
+            }
+        recycler.layoutManager = layoutManager
+
 
         initAction()
+        createNotificationChannel()
 
         val factory = ViewModelFactory.getInstance(this)
         taskViewModel = ViewModelProvider(this, factory).get(TaskViewModel::class.java)
@@ -49,8 +69,39 @@ class TaskActivity : AppCompatActivity() {
         //TODO 15 : Fixing bug : snackBar not show when task completed
     }
 
+    private fun createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = getString(R.string.pref_notify_name)
+            val descriptionText = getString(R.string.pref_notify_summary)
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            // Register the channel with the system
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
     private fun showRecyclerView(task: PagedList<Task>) {
         //TODO 7 : Submit pagedList to adapter and update database when onCheckChange
+        val listTaskAdapter = TaskAdapter(onCheckedChange = { selectedTask, newStatus ->
+            taskViewModel.completeTask(
+                selectedTask,
+                newStatus
+            )
+            if (newStatus) {
+                showSnackBar(Event(R.string.task_marked_complete))
+            } else {
+                showSnackBar(Event(R.string.task_marked_active))
+            }
+        })
+        listTaskAdapter.submitList(task)
+
+        recycler.adapter = listTaskAdapter
     }
 
     private fun showSnackBar(eventMessage: Event<Int>) {
