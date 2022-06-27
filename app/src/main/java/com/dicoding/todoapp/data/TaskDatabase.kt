@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.dicoding.todoapp.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,17 @@ abstract class TaskDatabase : RoomDatabase() {
 
     abstract fun taskDao(): TaskDao
 
+    class DatabaseCallback(private val context: Context): RoomDatabase.Callback(){
+        override fun onCreate(db: SupportSQLiteDatabase) {
+            super.onCreate(db)
+
+            val instance = getInstance(context)
+            CoroutineScope(Dispatchers.IO).launch {
+                fillWithStartingData(context, instance.taskDao())
+            }
+        }
+    }
+
     companion object {
 
         @Volatile
@@ -32,11 +44,9 @@ abstract class TaskDatabase : RoomDatabase() {
                     context.applicationContext,
                     TaskDatabase::class.java,
                     "task.db"
-                ).build()
+                ).addCallback(DatabaseCallback(context)).build()
+
                 INSTANCE = instance
-                CoroutineScope(Dispatchers.IO).launch {
-                    fillWithStartingData(context, instance.taskDao())
-                }
                 instance
             }
         }
